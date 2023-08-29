@@ -12,6 +12,7 @@ import datetime
 def compare_starts(time1,time2):
     hour1 = int(time1.split(':')[0])
     hour2 = int(time2.split(':')[0])
+    #print(str(hour1)+"--"+str(hour2))
     if hour1 <= 3:
         hour1 += 12
     if hour2 <= 3:
@@ -22,6 +23,48 @@ def compare_starts(time1,time2):
     else:
         return time2
 
+
+def extract_names(text):
+    # Regular expression to find patterns of the form "Name1, Name2"
+    # \b is a word boundary, which ensures we're getting whole words
+    # [a-zA-Z]+ matches one or more alphabetic characters
+    pattern = r"\b([a-zA-Z]+),\s*([a-zA-Z]+)\b"
+    matches = re.findall(pattern, text)
+    # Convert the matches into a list of strings
+    names = [", ".join(match) for match in matches]
+    return names
+
+def extract_time_ranges(text):
+    # Regular expression to find patterns of the form "HH:MM:SS Am/Pm -HH:MM:SS Am/Pm"
+    # The pattern captures hours, minutes, seconds and am/pm in both start and end times
+    pattern = r"(\d{1,2}:\d{2}:\d{2}\s*[AaPp][Mm])\s*-\s*(\d{1,2}:\d{2}:\d{2}\s*[AaPp][Mm])"
+    matches = re.findall(pattern, text)
+    # Convert the matches into a list of strings in the format "start_time - end_time"
+    time_ranges = [" - ".join(match) for match in matches]
+    return time_ranges
+
+def extract_special_ids(text):
+    # Regular expression to find patterns that start with a digit
+    # followed by a combination of letters and digits.
+    pattern = r"\b\d[A-Z]+\d+\b"
+    ids = re.findall(pattern, text)
+    print(ids)
+    return ids
+
+def extract_ids(text):
+    # Regular expression to find patterns of the form "HXXXXXXXX"
+    # The pattern captures an 'H' followed by several numeric digits
+    pattern = r"\bH\d+\b"
+    ids = re.findall(pattern, text)
+    print(ids)
+    return ids
+
+def extract_test_type(text):
+    # Regular expression to find patterns after "Montana HiSET" followed by a space
+    # and ending just before a hyphen or newline.
+    pattern = r"Montana HiSET ([A-Za-z\s]+)(?=\s*-|\n)"
+    test_types = re.findall(pattern, text)
+    return [test.strip() for test in test_types]
 
 # Capitalizes first letters and lowercases the rest, for proper splitting later
 def cap_words(student):
@@ -101,54 +144,37 @@ start_times = {}
 for students in students_list:
     for student in students:
         if len(student) > 30:
-            # get rid of new lines and cap first letters (lowercase the rest)
-            student = cap_words(student.replace("\n"," "))
 
-            # remove whitespace, split on capital letters and rejoin with spaces
-            student_cleaned = re.sub(' +', ' ',(' '.join(re.findall('[A-Z][^A-Z]*', student))))
-            student_cleaned = remove_forms(student_cleaned)
-            student_name = student_cleaned.split(',')[0:2] # Breaking for first and last names, expect two last names
-            print(student_name)
-            first_name = student_name[1].strip().split(' ')[0]
-            last_name = student_name[0].strip()
 
-            # Strip names from details
-            student_details = re.sub(first_name,'',student_cleaned)
-            student_details = re.sub(last_name,'',student_details)
+            student = remove_forms(student)
+            print(student)
+            student_name = extract_names(student.replace("\n", " "))
+            last_name = student_name[0].split(',')[1].strip()
+            first_name = student_name[0].split(',')[0]
 
-            # Tease out ID number
-            student_id = get_id(student_details)
-
-            # Strip ID number from details, remove comma
-            student_details = re.sub(student_id,'',student_details)
-            student_details = re.sub(',','',student_details).strip()
-
-            # Split on ':' then split on space and grab trailing and leading numbers
-            student_time = student_details.split(':')
-            student_time[0] = student_time[0].split(' ')[-1]
-            student_time[-1] = student_time[-1].split(' ')[0]
+            student_id = extract_ids(student)
+            if student_id == []:
+                student_id = extract_special_ids(student)
+            time_range = extract_time_ranges(student)
+            print(str(', '.join(student_name))+'--'+''.join(student_id)+'--'+str(time_range))
+            student_name = first_name.title() + ' ' + last_name.title()
+            test_type = extract_test_type(student)
 
             # Bring time back together and clean up
-            student_time = ':'.join(student_time)
-            student_time = re.sub(':00 |:00$','',student_time)
-            test_time = re.sub(' +',' ',re.sub('-',' - ',re.sub('PM','',(re.sub('AM','',' '.join(student_time.split(' ')[0:4]).upper())))))
-            test_start = test_time.split('-')[0].strip()
-            student = cap_words(first_name)+' '+cap_words(last_name)
+            test_start = time_range[0].split('-')[0].strip()
             # Grab earliest start time for each tester
-            if student in start_times:
-                start_times[student] = compare_starts(test_start,start_times[student])
+            if student_name in start_times:
+                start_times[student_name] = compare_starts(test_start,start_times[student_name])
             else:
-                start_times[student] = test_start
-
-            # Split on Hi Set to get test type
-            test_type = student_details.split('Hi Set')[-1].split('-')[0:-1]
-            test_type[0] = test_type[-1].strip() if test_type[0].strip() == 'Language Arts' else test_type[0].strip()
+                start_times[student_name] = test_start
 
             # Prepare entry to excel
-            entry = [' '.join([first_name.title(),last_name.title()]),student_id.upper(),test_time.strip(),test_type[0]]
+            entry = [' '.join([first_name.title(),last_name.title()]),student_id[0],time_range[0],test_type[0]]
             cleaned_entries.append(entry)
 
 # Build Roster Sign In Sheet
+
+print(start_times)
 
 pd_array = [["Name","ID","Time","Test"]]
 pd_dict = {"Name": [], "ID": [],"OTP": [], "Time": [], "Test": [], "Sign In":[], "Time In": [], "Sign Out": [], "Time Out": []}
