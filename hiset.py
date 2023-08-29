@@ -4,9 +4,28 @@ import glob
 import os
 import re
 import time
-import datetime
+from datetime import datetime
 
 # FUNCTIONS
+
+def convert_single_time_format(time_str):
+    # Parse the time string with AM/PM
+    dt = datetime.strptime(time_str, '%I:%M:%S %p')
+    # Return in the desired format
+    return dt.strftime('%I:%M %p').lstrip('0')
+
+def convert_time_range_format(time_range_str):
+    # Split the time range into start and end times
+    start_time_str, end_time_str = time_range_str.split('-')
+
+    # Function to convert individual time strings
+    def convert_time_format(time_str):
+        # Parse the time string with AM/PM
+        dt = datetime.strptime(time_str.strip(), '%I:%M:%S %p')
+        # Return in the desired format
+        return dt.strftime('%I:%M %p').lstrip('0')  # lstrip('0') to remove leading 0 from hours
+
+    return f"{convert_time_format(start_time_str)} - {convert_time_format(end_time_str)}"
 
 # Compare start times and return earliest
 def compare_starts(time1,time2):
@@ -147,7 +166,7 @@ for students in students_list:
 
 
             student = remove_forms(student)
-            print(student)
+            #print(student)
             student_name = extract_names(student.replace("\n", " "))
             last_name = student_name[0].split(',')[1].strip()
             first_name = student_name[0].split(',')[0]
@@ -156,7 +175,7 @@ for students in students_list:
             if student_id == []:
                 student_id = extract_special_ids(student)
             time_range = extract_time_ranges(student)
-            print(str(', '.join(student_name))+'--'+''.join(student_id)+'--'+str(time_range))
+            #print(str(', '.join(student_name))+'--'+''.join(student_id)+'--'+str(time_range))
             student_name = first_name.title() + ' ' + last_name.title()
             test_type = extract_test_type(student)
 
@@ -171,24 +190,27 @@ for students in students_list:
             # Prepare entry to excel
             entry = [' '.join([first_name.title(),last_name.title()]),student_id[0],time_range[0],test_type[0]]
             cleaned_entries.append(entry)
-
+            print('done')
 # Build Roster Sign In Sheet
 
 print(start_times)
 
 pd_array = [["Name","ID","Time","Test"]]
 pd_dict = {"Name": [], "ID": [],"OTP": [], "Time": [], "Test": [], "Sign In":[], "Time In": [], "Sign Out": [], "Time Out": []}
+print("still")
 for entry in cleaned_entries:
     pd_dict["Name"].append(entry[0])
     pd_dict["ID"].append(entry[1])
     pd_dict["OTP"].append(" ")
-    pd_dict["Time"].append(entry[2])
+    print('here')
+    pd_dict["Time"].append(convert_time_range_format(entry[2]))
+    print('maybe')
     pd_dict["Test"].append(entry[3])
     pd_dict["Sign In"].append(" ")
     pd_dict["Time In"].append(" ")
     pd_dict["Sign Out"].append(" ")
     pd_dict["Time Out"].append(" ")
-
+print("wokring")
 df = pd.DataFrame(pd_dict)
 df.style.set_caption("HiSET Sign In")
 df.to_excel(excel_writer= "C:/Users/Pearson/Desktop/HiSET/HiSET-signin.xlsx")
@@ -208,7 +230,7 @@ for entry in cleaned_entries:
 for k,v in deduped.items():
     office["Name"].append(k)
     office["# Tests"].append(v)
-    office["Start"].append(start_times[k])
+    office["Start"].append(convert_single_time_format(start_times[k]))
     office["Address"].append(' ')
     office["Lock"].append(" ")
     office["Paid"].append(" ")
