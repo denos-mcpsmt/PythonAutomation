@@ -9,6 +9,7 @@ from datetime import date
 import sys
 import time
 import os
+import dateutil.parser as dparser
 
 ros_path = "C:\\Users\\Pearson\\Downloads\\"
 abs_path = "C:\\Users\\Pearson\\Desktop\\Pearson Vue\\"
@@ -39,15 +40,15 @@ def fill_pdf(roster,admin,name,page):
     for i in range(len(roster)):
         can.setFont("Helvetica", 14)
         yPos = nameYstart-(i*136)
-        #can.drawString(140,yPos,roster[i][0])
-        #can.drawString(455,yPos,admin)
+        can.drawString(140,yPos,roster[i][0])
+        can.drawString(455,yPos,admin)
 
         if len(roster[i][1]) > 11:
             can.setFont("Helvetica",8)
         elif len(roster[i][1]) > 9:
             can.setFont("Helvetica", 10)
 
-        #can.drawString(90,codeYstart-(i*136),roster[i][1])
+        can.drawString(90,codeYstart-(i*136),roster[i][1])
 
     can.save()
 
@@ -77,37 +78,44 @@ def fill_word(doc,name,stime,exam):
                 if k.text:
                     if "*Name*" in k.text:
                         k.text = k.text.replace("*Name*", name).strip()
-                    #if "{{Name}}" in k.text:
-                    #    k.text = k.text.replace("{{Name}}", name).strip()
-                    #if "{{Start}}" in k.text:
-                    #    k.text = k.text.replace("{{Start}}", stime).strip()
+                    if "{{Name}}" in k.text:
+                        k.text = k.text.replace("{{Name}}", name).strip()
+                    if "{{Start}}" in k.text:
+                        k.text = k.text.replace("{{Start}}", stime).strip()
                     if "{{Exam}}" in k.text:
                         k.text = k.text.replace("{{Exam}}", exam).strip()
     return doc
 # Returns list of available rosters from [ros_path]
 def find_files(filename, search_path):
    result = []
-
-# Wlaking top-down from the root
+   dates = {}
+# Walking top-down from the root
    for root, dir, files in os.walk(search_path):
       for file in files:
-         if filename in file:
-            result.append(os.path.join(root, file))
+         if '(' not in file:
+            if filename in file:
+                result.append(os.path.join(root, file))
+
+
 
    return result
 # Ask user to select correct roster
 def check_file(results):
-   file = results.pop(0).split("\\")[-1]
-   check = input("Found Roster: "+file+"\nUse this file? (Y/n)")
-   if check.capitalize() == "Y":
-      return file
-   elif check.capitalize() == "N":
-      if len(results) > 0:
-        print("Roster Selected.")
-        return check_file(results)
-      else:
-        print("Could not find a Roster file!")
-        quit()
+    dates = {}
+    latest = time.strptime("January 1, 1969","%B %d, %Y")
+    result = ''
+    for file in results:
+        if '(' not in file:
+            date_str = time.strptime(' '.join(file.split('.')[0].split(' ')[-3:]),"%B %d, %Y")
+            dates[date_str] = file
+            if date_str > latest:
+                latest = date_str
+                result = file
+    print(result)
+
+    return result
+
+
 
 
 # MAIN
@@ -117,7 +125,7 @@ result = check_file(find_files("Pearson VUE","C:/Users/Pearson/Downloads"))
 roster_list = []
 
 # Parse CSV
-with open(ros_path+result) as csvfile:
+with open(result) as csvfile:
     roster = csv.reader(csvfile)
     next(roster) # Skip
     next(roster) # 4
@@ -150,12 +158,7 @@ for i in range(doc_count):
     if acc == 1:
         acc_list.append(name)
 
-    if client == 'Microsoft':
-        doc = Document(rel_path+'ms-template.docx')
-    elif client == 'PTCB':
-        doc = Document(rel_path+'ptcb-template.docx')
-    else:
-        doc = doc_pile[i]
+    doc = doc_pile[i]
     doc = fill_word(doc,name,stime,exam)
     doc.save(abs_path+str(i)+'.docx')
 
@@ -178,12 +181,12 @@ for entry in roster_list:
 if len(pdfs) > 0:
     fill_pdf(pdfs,proctor,str(i),[i,pages])
 
-input("You have "+str(len(name_list))+" testers taking "+str(len(roster_list))+" tests. (press ENTER to continue)")
+# input("You have "+str(len(name_list))+" testers taking "+str(len(roster_list))+" tests. (press ENTER to continue)")
 
 if len(acc_list) > 0:
     print("You have testers with accommodations:")
     for tester in acc_list:
         print(tester)
-    input("Press ENTER to continue")
+    #input("Press ENTER to continue")
 else:
     print("No accommodations found.")
