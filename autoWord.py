@@ -152,8 +152,14 @@ for i in range(doc_count):
 
     if client == 'Microsoft':
         doc = Document(rel_path+'ms-template.docx')
-    elif client == 'PTCB':
+    elif client == 'Pharmacy Technician Certification Board':
         doc = Document(rel_path+'ptcb-template.docx')
+    elif client == 'Evaluation Systems':
+        doc = Document(rel_path+'es-template.docx')
+    elif 'CDA' in client:
+        doc = Document(rel_path+'cda-template.docx')
+    elif 'ICC' in client:
+        doc = Docuemtn(rel_path+'icc-template.docx')
     else:
         doc = doc_pile[i]
     doc = fill_word(doc,name,stime,exam)
