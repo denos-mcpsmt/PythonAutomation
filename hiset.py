@@ -78,11 +78,22 @@ def extract_ids(text):
     print(ids)
     return ids
 
+def extract_ids_simple(text):
+    # Regular expression to find patterns of the form "HXXXXXXXX"
+    # The pattern captures an 'H' followed by several numeric digits
+    pattern = r"H\d+\b"
+    ids = re.findall(pattern, text)
+    print(ids)
+    return ids
+
 def extract_test_type(text):
     # Regular expression to find patterns after "Montana HiSET" followed by a space
     # and ending just before a hyphen or newline.
     pattern = r"Montana HiSET ([A-Za-z\s]+)(?=\s*-|\n)"
     test_types = re.findall(pattern, text)
+    if test_types[0] == 'Language Arts ':
+        test_types[0] = text.split('-')[2]
+    print(test_types)
     return [test.strip() for test in test_types]
 
 # Capitalizes first letters and lowercases the rest, for proper splitting later
@@ -166,14 +177,21 @@ for students in students_list:
 
 
             student = remove_forms(student)
-            #print(student)
-            student_name = extract_names(student.replace("\n", " "))
-            last_name = student_name[0].split(',')[1].strip()
-            first_name = student_name[0].split(',')[0]
-
             student_id = extract_ids(student)
             if student_id == []:
                 student_id = extract_special_ids(student)
+                if student_id == []:
+                    student_id = extract_ids_simple(student)
+            print(student_id)
+            student = student.replace(student_id[0],' ')
+            print(student)
+            student_name = extract_names(student.replace("\n", " "))
+            print(student_name)
+            last_name = student_name[0].split(',')[1].strip()
+            first_name = student_name[0].split(',')[0]
+
+            #student_id = extract_ids(student)
+
             time_range = extract_time_ranges(student)
             #print(str(', '.join(student_name))+'--'+''.join(student_id)+'--'+str(time_range))
             student_name = first_name.title() + ' ' + last_name.title()
